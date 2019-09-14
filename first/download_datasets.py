@@ -37,6 +37,8 @@ class download_datasets:
     def __init__(self):
         self.path = paths()
         do_download = self.check_directory()
-        print(do_download)
         if do_download:
+            self.download_abalone_dataset()
+        do_download = input("abalone data is already present. re-download? (Enter 'y' for yes, default is no.): ")
+        if do_download == 'y' or do_download == 'Y':
             self.download_abalone_dataset()
