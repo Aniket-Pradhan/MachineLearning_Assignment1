@@ -32,7 +32,7 @@ class main:
         # self.plot_features()
         
         # normalizing data
-        self.data = (self.data - self.data.mean())/self.data.std()
+        # self.data = (self.data - self.data.mean())/self.data.std()
         
         # split data into multiple frames
         self.data = np.array_split(self.data, self.k)
@@ -86,7 +86,7 @@ class main:
         self.dl_data = download_datasets()
         
         self.datapath = self.path.abalone_dataset + "/Dataset.data"
-        self.alpha = 0.1
+        self.alpha = .1
         self.iters = 1000
         self.k = 5
         self.read_data()
