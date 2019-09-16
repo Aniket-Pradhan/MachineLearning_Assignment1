@@ -24,6 +24,11 @@ class download_datasets:
             with open(dataset_root + "/abalone/Dataset.data", 'wb') as outfile:
                 shutil.copyfileobj(infile, outfile)
     
+    def check_create_directory(self):
+        dataset_root = self.path.datasets
+        if not os.path.isdir(dataset_root):
+            os.makedirs(dataset_root)
+    
     def check_directory(self):
         dataset_root = self.path.datasets
         ls_root = os.listdir(dataset_root)
@@ -36,9 +41,11 @@ class download_datasets:
 
     def __init__(self):
         self.path = paths()
+        self.check_create_directory()
         do_download = self.check_directory()
         if do_download:
             self.download_abalone_dataset()
-        do_download = input("abalone data is already present. re-download? (Enter 'y' for yes, default is no.): ")
-        if do_download == 'y' or do_download == 'Y':
-            self.download_abalone_dataset()
+        else:
+            do_download = input("abalone data is already present. re-download? (Enter 'y' for yes, default is no.): ")
+            if do_download == 'y' or do_download == 'Y':
+                self.download_abalone_dataset()
