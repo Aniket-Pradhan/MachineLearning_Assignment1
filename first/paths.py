@@ -6,6 +6,8 @@ class paths:
         self.root = str(Path(__file__).parent.parent)
         self.datasets = self.root + "/datasets"
         self.abalone_dataset = self.datasets + "/abalone"
+        self.models = self.root + "/models"
+        self.abalone_models = self.models + "/abalone"
 
     def init_urls(self):
         self.abalone_dataset_url = "ftp://ftp.cs.toronto.edu/pub/neuron/delve/data/tarfiles/abalone.tar.gz"
