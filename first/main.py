@@ -131,7 +131,9 @@ class main:
             print()
         if not skip:
             print("Average train error: ", np.mean(np.array(self.final_train_error)))
+            self.pickle_save(self.final_train_error, 'train_errors')
         print("Average test error: ", np.mean(np.array(self.final_test_error)))
+        self.pickle_save(self.final_test_error, 'test_errors')
 
         train_errors = []
         test_errors = []
@@ -160,8 +162,53 @@ class main:
 
         plt.show()
     
+    def lr_closed_form(self):
+        # β^=(X'X)^−1 * X'y
+        self.theta = (np.linalg.inv(self.X.T @ self.X)) @ (self.X.T @ self.Y)
+        self.theta = self.theta.T
+    
+    def linear_regression_closed_form_train(self):
+        self.X = self.training_set.iloc[:,0:8]
+        ones = np.ones([self.X.shape[0],1])
+        self.X = np.concatenate((ones, self.X), axis=1)
+        self.X = np.array(self.X, dtype = 'float')
+        self.Y = self.training_set.iloc[:,8:9].values
+        self.Y = np.array(self.Y, dtype = 'float')
+        self.lr_closed_form()
+        train_error = self.error_function()
+        self.final_train_error.append(train_error)
+        print("Training error for fold number: = ", self.testing_index, ": ", train_error)
+    
+    def linear_regression_closed_form_test(self):
+        self.X = self.test_set.iloc[:,0:8]
+        ones = np.ones([self.X.shape[0],1])
+        self.X = np.concatenate((ones, self.X),axis=1)
+        self.Y = self.test_set.iloc[:,8:9].values
+        test_error = self.error_function()
+        self.final_test_error.append(test_error)
+        print("Testing error for fold number: = ", self.testing_index, ": ", test_error)
+
     def linear_regression_closed_form(self):
-        pass
+        self.final_train_error = []
+        self.final_test_error = []
+
+        for i in range(self.k):
+            self.thetas = []
+            self.testing_index = i
+            self.test_set = pd.DataFrame(columns = self.columns)
+            self.training_set = pd.DataFrame(columns = self.columns)
+            for data_frame_index in range(self.k):
+                if data_frame_index == self.testing_index:
+                    self.test_set = pd.concat([self.test_set, self.data_k_split[data_frame_index]])
+                else:
+                    self.training_set = pd.concat([self.training_set, self.data_k_split[data_frame_index]])
+            self.linear_regression_closed_form_train()
+            self.linear_regression_test()
+            print()
+        print("Average train error: ", np.mean(np.array(self.final_train_error)))
+        self.pickle_save(self.final_train_error, 'train_errors')
+        print("Average test error: ", np.mean(np.array(self.final_test_error)))
+        self.pickle_save(self.final_test_error, 'test_errors')
 
     def check_pre_models(self):
         model_dir = self.path.abalone_models
@@ -170,26 +217,57 @@ class main:
         if self.question == 'a':
             check_models = ['a0', 'a1', 'a2', 'a3', 'a4']
             self.skip_train = any(True for model in check_models if model in ls_models)
+    
+    def plot_errors_part_ab(self):
+        self.question = 'a'
+        atest_errors = self.pickle_load("test_errors")
+        atrain_errors = self.pickle_load("train_errors")
+        self.question = 'b'
+        btrain_errors = self.pickle_load("train_errors")
+        btest_errors = self.pickle_load("test_errors")
+
+        ind = np.arange(len(atrain_errors))  # the x locations for the groups
+        width = 0.2  # the width of the bars
+
+        fig, ax = plt.subplots()
+        ax.bar(ind - width/2, atrain_errors, width, label='Gradient Descent')
+        ax.bar(ind + width/2, btrain_errors, width, label='Normal Form')
+        ax.set_xlabel('Different k\'s')
+        ax.set_ylabel('Error')
+        ax.set_title('Training RMSE between GD and Normal Form')
+        ax.legend()
+
+        fig, ax = plt.subplots()
+        ax.bar(ind - width/2, atest_errors, width, label='Gradient Descent')
+        ax.bar(ind + width/2, btest_errors, width, label='Normal Form')
+        ax.set_xlabel('Different k\'s')
+        ax.set_ylabel('Error')
+        ax.set_title('Testing RMSE between GD and Normal Form')
+        ax.legend()
+
+        plt.show()
 
     def __init__(self):
         self.path = paths()
         self.dl_data = download_datasets()
         self.datapath = self.path.abalone_dataset + "/Dataset.data"
-        self.alpha = .1
-        self.iters = 1000
+        self.alpha = .01
+        self.iters = 10000
         self.k = 5
 
         self.read_data()
 
-        # Part a
-        self.question = 'a'
-        self.check_pre_models()
-        self.linear_regression()
+        # # Part a
+        # self.question = 'a'
+        # self.check_pre_models()
+        # self.linear_regression()
 
         # Part b
         self.question = 'b'
         self.check_pre_models()
         self.linear_regression_closed_form()
+
+        self.plot_errors_part_ab()
 
 
 if __name__ == "__main__":
