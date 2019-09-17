@@ -1,5 +1,4 @@
 .vscode/
 .venv/
-first/__pycache__/
-
 datasets/
+Linear_Regression/__pycache__/
