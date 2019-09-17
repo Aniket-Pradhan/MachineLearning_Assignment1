@@ -17,12 +17,12 @@ class main:
     
     def pickle_save(self, model, model_name):
         self.check_create_directory(self.path.abalone_models)
-        with open(str(self.path.abalone_models) + "/" + str(self.question) + str(model_name), 'wb') as handle:
+        with open(str(self.path.abalone_models) + "/" + str(self.question_number) + str(self.question_part) + str(model_name), 'wb') as handle:
             pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)
         pass
 
     def pickle_load(self, model_name):
-        with open(str(self.path.abalone_models) + "/" + str(self.question) + str(model_name), 'rb') as handle:
+        with open(str(self.path.abalone_models) + "/" + str(self.question_number) + str(self.question_part) + str(model_name), 'rb') as handle:
             model = pickle.load(handle)
         return model
 
@@ -214,15 +214,18 @@ class main:
         model_dir = self.path.abalone_models
         self.check_create_directory(model_dir)
         ls_models = os.listdir(model_dir)
-        if self.question == 'a':
-            check_models = ['a0', 'a1', 'a2', 'a3', 'a4']
+        if self.question_part == 'a':
+            model_prefix = self.question_number + self.question_part
+            check_models = []
+            for model in range(self.k):
+                check_models.append(model_prefix + str(model))
             self.skip_train = any(True for model in check_models if model in ls_models)
     
     def plot_errors_part_ab(self):
-        self.question = 'a'
+        self.question_part = 'a'
         atest_errors = self.pickle_load("test_errors")
         atrain_errors = self.pickle_load("train_errors")
-        self.question = 'b'
+        self.question_part = 'b'
         btrain_errors = self.pickle_load("train_errors")
         btest_errors = self.pickle_load("test_errors")
 
@@ -251,24 +254,27 @@ class main:
         self.path = paths()
         self.dl_data = download_datasets()
         self.datapath = self.path.abalone_dataset + "/Dataset.data"
-        self.alpha = .01
-        self.iters = 10000
+        self.alpha = .1
+        self.iters = 1000
         self.k = 5
 
         self.read_data()
+        self.question_number = '1'
 
         # # Part a
-        self.question = 'a'
+        self.question_part = 'a'
         self.check_pre_models()
         self.linear_regression()
 
         # Part b
-        self.question = 'b'
+        input("Press enter for the next part")
+        self.question_part = 'b'
         self.check_pre_models()
         self.linear_regression_closed_form()
 
         # Part c
-        self.question = 'c'
+        input("Press enter for the next part")
+        self.question_part = 'c'
         self.plot_errors_part_ab()
 
         ## Explanation/Observation
