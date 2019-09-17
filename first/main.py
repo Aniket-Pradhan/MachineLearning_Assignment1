@@ -258,16 +258,31 @@ class main:
         self.read_data()
 
         # # Part a
-        # self.question = 'a'
-        # self.check_pre_models()
-        # self.linear_regression()
+        self.question = 'a'
+        self.check_pre_models()
+        self.linear_regression()
 
         # Part b
         self.question = 'b'
         self.check_pre_models()
         self.linear_regression_closed_form()
 
+        # Part c
+        self.question = 'c'
         self.plot_errors_part_ab()
+
+        ## Explanation/Observation
+        """
+        RMSE calculated in part 'b' is less than the RMSE from part 'a'. This is because in part 'b' we are using the analytical/normal solution
+        of the linear regression problem, whereas in part 'a' we are computing everything manually using the gradient descent. The gradient
+        descent algorithm depends upon the step-size and the number of epochs as well. If we use a bigger step-size, we might end not end up
+        at the minimum value of the required function, whereas if we use a smaller step-size, computation could take an indefinite amount of
+        time. The number of iterations/epochs determine how long do we want to run the gradient descent algorithm. A smaller number, would lead
+        to termincation of the program before we reach the minima, whereas a bigger number would lead to more computation.
+        Hence, we the RMSE depends upon the these two parameters, and it varies as we change them.
+        On the other hand, the closed/normal form produces a perfect solution to the linear regression problem, but can be computationally 
+        expensive based on the size of the data, as it requires inverting matrices and their multiplication as well.
+        """
 
 
 if __name__ == "__main__":
