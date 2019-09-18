@@ -259,11 +259,19 @@ class main:
             if data_frame_index == self.lowest_val_error_index:
                 continue
             self.remaining_data = pd.concat([self.remaining_data, self.data_k_split[data_frame_index]])
-    
-    def get_input_and_target(self):
+        
+        # tune the alpha_ridge based on the 80% remaining data.
         self.X = self.remaining_data.iloc[:,0:8].values
         self.Y = self.remaining_data.iloc[:,8:9].values
+        self.tune_param()
+
+        # split the remaining 80% data for training and testing.
+        self.remaining_data = np.array_split(self.remaining_data, self.k)
     
+    # def get_input_and_target(self):
+    #     self.X = self.remaining_data.iloc[:,0:8].values
+    #     self.Y = self.remaining_data.iloc[:,8:9].values
+
     def tune_param(self):
         self.alphas = np.array([1, 0.1, 0.01, 0.001, 0.0001, 0])
         print(self.alphas)
@@ -281,8 +289,9 @@ class main:
     
     def error_function_ridge(self):
         # Error function: (1/2N) * (XT - Y)^2 where T is theta
-        # print(self.alpha_ridge, np.power(self.theta), 2)
-        error_values = np.sum(np.power(((self.X @ self.theta.T) - self.Y), 2)) + self.alpha_ridge * np.dot(self.theta.T, self.theta)
+        print((np.dot(self.theta.T, self.theta).shape))
+        error_values = np.sum(np.power(((self.X @ self.theta.T) - self.Y), 2)) + (self.alpha_ridge * np.dot(self.theta.T, self.theta))
+        # error_values = np.sum(np.power(((self.X @ self.theta.T) - self.Y), 2))
         return np.sum(error_values)/(2 * len(self.X))
     
     def gradientDescent_ridge(self):
@@ -291,7 +300,8 @@ class main:
         for i in range(self.iters):
             # gradient descent
             # T = T - (\alpha/2N) * X*(XT - Y)
-            self.theta = self.theta - (self.alpha/len(self.X)) * (self.X.T @ (self.X @ self.theta.T - self.Y)).T - ((self.alpha_ridge/len(self.X)) * self.theta)
+            self.theta = self.theta - (self.alpha/len(self.X)) * (self.X.T @ (self.X @ self.theta.T - self.Y)).T + ((self.alpha_ridge/len(self.X)) * self.theta)
+            # self.theta = self.theta - (self.alpha/len(self.X)) * (self.X.T @ (self.X @ self.theta.T - self.Y)).T
             self.thetas.append(self.theta)
             errors[i] = self.error_function_ridge()
             print(errors[i])
@@ -300,16 +310,28 @@ class main:
         return errors
 
     def linear_regression_train_ridge(self):
-        self.X = self.training_set.iloc[:,0:8].values
+        self.X = self.training_set.iloc[:,0:8]
+        ones = np.ones([self.X.shape[0],1])
+        self.X = np.concatenate((ones, self.X),axis=1)
         self.Y = self.training_set.iloc[:,8:9].values
-        self.theta = np.zeros([1,8]) # the parameters
+        self.theta = np.zeros([1,9]) # the parameters
         # gradient descent
         errors = self.gradientDescent_ridge()
         self.train_errors.extend(errors)
         train_error = self.error_function_ridge()
         self.final_train_error.append(train_error)
         print("Training error for fold number: = ", self.testing_index, ": ", train_error)
-    
+
+    def linear_regression_test_ridge(self):
+        self.X = self.test_set.iloc[:,0:8]
+        ones = np.ones([self.X.shape[0],1])
+        self.X = np.concatenate((ones, self.X),axis=1)
+        self.Y = self.test_set.iloc[:,8:9].values
+        # self.get_errors()
+        test_error = self.error_function_ridge()
+        self.final_test_error.append(test_error)
+        print("Testing error for fold number: = ", self.testing_index, ": ", test_error)
+
     def linear_regression_ridge(self):
         self.train_errors = []
         self.test_errors = []
@@ -320,18 +342,18 @@ class main:
         for i in range(self.k):
             self.thetas = []
             self.testing_index = i
-            self.training_set = self.remaining_data
-            # for data_frame_index in range(self.k):
-            #     if data_frame_index == self.testing_index:
-            #         self.test_set = pd.concat([self.test_set, self.data_k_split[data_frame_index]])
-            #     else:
-            #         self.training_set = pd.concat([self.training_set, self.data_k_split[data_frame_index]])
+            self.validation_set = pd.DataFrame(columns = self.columns)
+            self.training_set = pd.DataFrame(columns = self.columns)
+            for data_frame_index in range(self.k):
+                if data_frame_index == self.testing_index:
+                    self.validation_set = pd.concat([self.validation_set, self.remaining_data[data_frame_index]])
+                else:
+                    self.training_set = pd.concat([self.training_set, self.remaining_data[data_frame_index]])
             if skip:
                 self.theta = self.pickle_load(self.testing_index)
                 self.thetas = self.pickle_load(str(self.testing_index) + "_")
             else:
                 self.linear_regression_train_ridge()
-            exit()
             self.linear_regression_test_ridge()
             print()
         if not skip:
@@ -364,7 +386,6 @@ class main:
         ax.set_xlabel('Iterations')
         ax.set_ylabel('Error')
         ax.set_title('Error vs. Testing Epoch')
-
         plt.show()
 
     def plot_tuning(self):
@@ -434,8 +455,7 @@ class main:
 
         self.lowest_val_error_index = 1
         self.generate_train_test_set()
-        self.get_input_and_target()
-        self.tune_param()
+        # self.get_input_and_target()
         # self.plot_tuning()
         self.linear_regression_ridge()
 
