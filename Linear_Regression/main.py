@@ -5,6 +5,8 @@ import pandas as pd
 import chart_studio.plotly as py
 import matplotlib.pyplot as plt
 from matplotlib import style
+from sklearn.linear_model import Ridge
+from sklearn.model_selection import GridSearchCV
 
 from paths import paths
 from download_datasets import download_datasets
@@ -88,7 +90,7 @@ class main:
         print("Testing error for fold number: = ", self.testing_index, ": ", test_error)
 
     def linear_regression_train(self):
-        self.X = self.training_set.iloc[:,0:8]
+        self.X = self.training_set.iloc[:,0:8].values
         ones = np.ones([self.X.shape[0],1])
         self.X = np.concatenate((ones, self.X),axis=1)
         self.Y = self.training_set.iloc[:,8:9].values
@@ -250,6 +252,138 @@ class main:
 
         plt.show()
 
+    def generate_train_test_set(self):
+        self.test_set = self.data_k_split[self.lowest_val_error_index]
+        self.remaining_data = pd.DataFrame(columns = self.columns)
+        for data_frame_index in range(self.k):
+            if data_frame_index == self.lowest_val_error_index:
+                continue
+            self.remaining_data = pd.concat([self.remaining_data, self.data_k_split[data_frame_index]])
+    
+    def get_input_and_target(self):
+        self.X = self.remaining_data.iloc[:,0:8].values
+        self.Y = self.remaining_data.iloc[:,8:9].values
+    
+    def tune_param(self):
+        self.alphas = np.logspace(-4, -0.5, 30)
+        tuned_parameters = [{'alpha': self.alphas}]
+        model = Ridge()
+        self.grid = GridSearchCV(cv = self.k, estimator=model, param_grid=tuned_parameters)
+        # print(grid.get_params())
+        self.grid.fit(self.X, self.Y)
+        print(self.grid.best_score_)
+        print(self.grid.best_estimator_.alpha)
+        self.alpha_ridge = self.grid.best_estimator_.alpha
+        self.scores = self.grid.cv_results_['mean_test_score']
+        self.scores_std = self.grid.cv_results_['std_test_score']
+    
+    def error_function_ridge(self):
+        # Error function: (1/2N) * (XT - Y)^2 where T is theta
+        # print(self.alpha_ridge, np.power(self.theta), 2)
+        error_values = np.power(((self.X @ self.theta.T) - self.Y), 2) - self.alpha_ridge * np.power(self.theta, 2)
+        return np.sum(error_values)/(2 * len(self.X))
+    
+    def gradientDescent_ridge(self):
+        # array of error values for respective iteration.
+        errors = np.zeros(self.iters)
+        for i in range(self.iters):
+            # gradient descent
+            # T = T - (\alpha/2N) * X*(XT - Y)
+            self.theta = self.theta - (self.alpha/len(self.X)) * np.sum(self.X * (self.X @ self.theta.T - self.Y), axis=0) - ((self.alpha_ridge/len(self.X)) * self.theta)
+            self.thetas.append(self.theta)
+            errors[i] = self.error_function_ridge()
+        self.pickle_save(self.theta, self.testing_index)
+        self.pickle_save(self.thetas, str(self.testing_index) + "_")
+        return errors
+
+    def linear_regression_train_ridge(self):
+        self.X = self.training_set.iloc[:,0:8].values
+        ones = np.ones([self.X.shape[0],1])
+        self.X = np.concatenate((ones, self.X),axis=1)
+        self.Y = self.training_set.iloc[:,8:9].values
+        self.theta = np.zeros([1,9]) # the parameters
+        # gradient descent
+        errors = self.gradientDescent_ridge()
+        self.train_errors.extend(errors)
+        train_error = self.error_function_ridge()
+        self.final_train_error.append(train_error)
+        print("Training error for fold number: = ", self.testing_index, ": ", train_error)
+    
+    def linear_regression_ridge(self):
+        self.train_errors = []
+        self.test_errors = []
+        self.final_train_error = []
+        self.final_test_error = []
+        skip = False
+        
+        for i in range(self.k):
+            self.thetas = []
+            self.testing_index = i
+            self.training_set = self.remaining_data
+            # for data_frame_index in range(self.k):
+            #     if data_frame_index == self.testing_index:
+            #         self.test_set = pd.concat([self.test_set, self.data_k_split[data_frame_index]])
+            #     else:
+            #         self.training_set = pd.concat([self.training_set, self.data_k_split[data_frame_index]])
+            if skip:
+                self.theta = self.pickle_load(self.testing_index)
+                self.thetas = self.pickle_load(str(self.testing_index) + "_")
+            else:
+                self.linear_regression_train_ridge()
+            exit()
+            self.linear_regression_test_ridge()
+            print()
+        if not skip:
+            print("Average train error: ", np.mean(np.array(self.final_train_error)))
+            self.pickle_save(self.final_train_error, 'train_errors')
+        print("Average test error: ", np.mean(np.array(self.final_test_error)))
+        self.pickle_save(self.final_test_error, 'test_errors')
+
+        train_errors = []
+        test_errors = []
+        for i in range(self.k):
+            if not skip:
+                train_errors.append(self.train_errors[i*self.iters:(i+1)*self.iters])
+            test_errors.append(np.array(self.test_errors[i*self.iters:(i+1)*self.iters]))
+
+        if not skip:
+            self.train_errors = np.mean(np.array(train_errors), axis=0)
+        self.test_errors = np.mean(np.array(test_errors), axis=0)
+
+        # plot error vs iterations
+        if not skip:
+            fig, ax = plt.subplots()
+            ax.plot(np.arange(self.iters), self.train_errors, 'r')
+            ax.set_xlabel('Iterations')
+            ax.set_ylabel('Error')
+            ax.set_title('Error vs. Training Epoch')
+
+        fig, ax = plt.subplots()
+        ax.plot(np.arange(self.iters), self.test_errors, 'r')
+        ax.set_xlabel('Iterations')
+        ax.set_ylabel('Error')
+        ax.set_title('Error vs. Testing Epoch')
+
+        plt.show()
+
+    def plot_tuning(self):
+        plt.figure().set_size_inches(8, 6)
+        plt.semilogx(self.alphas, self.scores)
+        # plot error lines showing +/- std. errors of the self.scores
+        std_error = self.scores_std / np.sqrt(self.k)
+
+        plt.semilogx(self.alphas, self.scores + std_error, 'b--')
+        plt.semilogx(self.alphas, self.scores - std_error, 'b--')
+
+        # alpha=0.2 controls the translucency of the fill color
+        plt.fill_between(self.alphas, self.scores + std_error, self.scores - std_error, alpha=0.2)
+
+        plt.ylabel('CV score +/- std error')
+        plt.xlabel('alpha')
+        plt.axhline(np.max(self.scores), linestyle='--', color='.5')
+        plt.xlim([self.alphas[0], self.alphas[-1]])
+        plt.show()
+
     def __init__(self):
         self.path = paths()
         self.dl_data = download_datasets()
@@ -261,21 +395,22 @@ class main:
         self.read_data()
         self.question_number = '1'
 
+        ## Question 1
         # # Part a
-        self.question_part = 'a'
-        self.check_pre_models()
-        self.linear_regression()
+        # self.question_part = 'a'
+        # self.check_pre_models()
+        # self.linear_regression()
 
-        # Part b
-        input("Press enter for the next part")
-        self.question_part = 'b'
-        self.check_pre_models()
-        self.linear_regression_closed_form()
+        # # Part b
+        # input("Press enter for the next part")
+        # self.question_part = 'b'
+        # self.check_pre_models()
+        # self.linear_regression_closed_form()
 
-        # Part c
-        input("Press enter for the next part")
-        self.question_part = 'c'
-        self.plot_errors_part_ab()
+        # # Part c
+        # input("Press enter for the next part")
+        # self.question_part = 'c'
+        # self.plot_errors_part_ab()
 
         ## Explanation/Observation
         """
@@ -289,6 +424,19 @@ class main:
         On the other hand, the closed/normal form produces a perfect solution to the linear regression problem, but can be computationally 
         expensive based on the size of the data, as it requires inverting matrices and their multiplication as well.
         """
+
+        ## Question 2
+        ## k = 1 gives the least validation error. Therefore using k = 1 as the test set, and using the rest to generate
+        ## training and validation set.
+        self.question_number = '2'
+        self.question_part = 'a'
+
+        self.lowest_val_error_index = 1
+        self.generate_train_test_set()
+        self.get_input_and_target()
+        self.tune_param()
+        self.plot_tuning()
+        self.linear_regression_ridge()
 
 
 if __name__ == "__main__":
