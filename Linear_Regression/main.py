@@ -72,7 +72,7 @@ class main:
         for i in range(self.iters):
             # gradient descent
             # T = T - (\alpha/2N) * X*(XT - Y)
-            self.theta = self.theta - (self.alpha/len(self.X)) * np.sum(self.X * (self.X @ self.theta.T - self.Y), axis=0)
+            self.theta = self.theta - (self.alpha/len(self.X)) * (self.X.T @ (self.X @ self.theta.T - self.Y)).T
             self.thetas.append(self.theta)
             errors[i] = self.error_function()
         self.pickle_save(self.theta, self.testing_index)
