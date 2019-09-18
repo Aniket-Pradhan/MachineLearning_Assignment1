@@ -265,13 +265,15 @@ class main:
         self.Y = self.remaining_data.iloc[:,8:9].values
     
     def tune_param(self):
-        self.alphas = np.logspace(-4, -0.5, 30)
+        self.alphas = np.array([1, 0.1, 0.01, 0.001, 0.0001, 0])
+        print(self.alphas)
+        # alphas = np.array([1,0.1,0.01,0.001,0.0001,0])
         tuned_parameters = [{'alpha': self.alphas}]
         model = Ridge()
         self.grid = GridSearchCV(cv = self.k, estimator=model, param_grid=tuned_parameters)
         # print(grid.get_params())
         self.grid.fit(self.X, self.Y)
-        print(self.grid.best_score_)
+        # print(self.grid.best_params_)
         print(self.grid.best_estimator_.alpha)
         self.alpha_ridge = self.grid.best_estimator_.alpha
         self.scores = self.grid.cv_results_['mean_test_score']
@@ -280,7 +282,7 @@ class main:
     def error_function_ridge(self):
         # Error function: (1/2N) * (XT - Y)^2 where T is theta
         # print(self.alpha_ridge, np.power(self.theta), 2)
-        error_values = np.power(((self.X @ self.theta.T) - self.Y), 2) - self.alpha_ridge * np.power(self.theta, 2)
+        error_values = np.sum(np.power(((self.X @ self.theta.T) - self.Y), 2)) + self.alpha_ridge * np.dot(self.theta.T, self.theta)
         return np.sum(error_values)/(2 * len(self.X))
     
     def gradientDescent_ridge(self):
@@ -289,19 +291,18 @@ class main:
         for i in range(self.iters):
             # gradient descent
             # T = T - (\alpha/2N) * X*(XT - Y)
-            self.theta = self.theta - (self.alpha/len(self.X)) * np.sum(self.X * (self.X @ self.theta.T - self.Y), axis=0) - ((self.alpha_ridge/len(self.X)) * self.theta)
+            self.theta = self.theta - (self.alpha/len(self.X)) * (self.X.T @ (self.X @ self.theta.T - self.Y)).T - ((self.alpha_ridge/len(self.X)) * self.theta)
             self.thetas.append(self.theta)
             errors[i] = self.error_function_ridge()
+            print(errors[i])
         self.pickle_save(self.theta, self.testing_index)
         self.pickle_save(self.thetas, str(self.testing_index) + "_")
         return errors
 
     def linear_regression_train_ridge(self):
         self.X = self.training_set.iloc[:,0:8].values
-        ones = np.ones([self.X.shape[0],1])
-        self.X = np.concatenate((ones, self.X),axis=1)
         self.Y = self.training_set.iloc[:,8:9].values
-        self.theta = np.zeros([1,9]) # the parameters
+        self.theta = np.zeros([1,8]) # the parameters
         # gradient descent
         errors = self.gradientDescent_ridge()
         self.train_errors.extend(errors)
@@ -435,7 +436,7 @@ class main:
         self.generate_train_test_set()
         self.get_input_and_target()
         self.tune_param()
-        self.plot_tuning()
+        # self.plot_tuning()
         self.linear_regression_ridge()
 
 
