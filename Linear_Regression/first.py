@@ -299,15 +299,19 @@ class main:
         self.scores_std = self.grid.cv_results_['std_test_score']
     
     def error_function_ridge(self):
-        error_values = np.power(np.mean(np.power(((self.X @ self.theta.T) - self.Y), 2)), 0.5) + self.alpha_ridge * np.power(np.sum(self.theta), 2) / len(self.X)
+        regularization = 0
+        for i in self.theta.T.tolist():
+            regularization += i[0]**2
+        error_values = np.mean(np.power(np.power(((self.X @ self.theta.T) - self.Y), 2), 0.5))
+        error_values += self.alpha_ridge * regularization / len(self.X)
         return error_values
-    
+
     def gradientDescent_ridge(self):
         errors = np.zeros(self.iters)
         for i in range(self.iters):
             # gradient descent
             # T = T - (\alpha/2N) * X*(XT - Y) + \alpha'*T
-            self.theta = self.theta - (self.alpha/len(self.X)) * (self.X.T @ (self.X @ self.theta.T - self.Y)).T + ((self.alpha_ridge/len(self.X)) * self.theta)
+            self.theta = self.theta - (self.alpha/len(self.X)) * (self.X.T @ (self.X @ self.theta.T - self.Y)).T - ((self.alpha_ridge/len(self.X)) * self.theta)
             self.thetas.append(self.theta)
             errors[i] = self.error_function_ridge()
         self.pickle_save(self.theta, self.testing_index)
@@ -576,21 +580,21 @@ class main:
         self.read_data()
         self.question_number = '1'
 
-        # # Part a
-        # self.question_part = 'aa'
-        # self.check_pre_models()
-        # self.linear_regression()
+        # Part a
+        self.question_part = 'aa'
+        self.check_pre_models()
+        self.linear_regression()
 
-        # # Part b
-        # input("Press enter for the next part")
-        # self.question_part = 'ab'
-        # self.check_pre_models()
-        # self.linear_regression_closed_form()
+        # Part b
+        input("Press enter for the next part")
+        self.question_part = 'ab'
+        self.check_pre_models()
+        self.linear_regression_closed_form()
 
-        # # Part c
-        # input("Press enter for the next part")
-        # self.question_part = 'ac'
-        # self.plot_errors_part_ab()
+        # Part c
+        input("Press enter for the next part")
+        self.question_part = 'ac'
+        self.plot_errors_part_ab()
 
         ## Explanation/Observation
         """
