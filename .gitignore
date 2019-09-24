@@ -2,3 +2,4 @@
 .venv/
 datasets/
 Linear_Regression/__pycache__/
+models/
