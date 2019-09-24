@@ -3,3 +3,5 @@
 datasets/
 Linear_Regression/__pycache__/
 models/
+
+Logistic_Regression/__pycache__/

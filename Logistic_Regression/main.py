@@ -1,12 +1,35 @@
+import os
+import pickle
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from paths import paths
 
 class main:
 
+    def check_create_directory(self, path_given):
+        if not os.path.isdir(path_given):
+            os.makedirs(path_given)
+    
+    def pickle_save(self, model, model_name):
+        self.check_create_directory(self.path.income_models)
+        with open(str(self.path.income_models) + "/" + str(self.question_number) + str(self.question_part) + str(model_name), 'wb') as handle:
+            pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pass
+
+    def pickle_load(self, model_name):
+        try:
+            with open(str(self.path.income_models) + "/" + str(self.question_number) + str(self.question_part) + str(model_name), 'rb') as handle:
+                model = pickle.load(handle)
+        except:
+            print("File not found error. Exiting.")
+            exit()
+        return model
+
+
     def read_data(self, datapath):
-        self.data = pd.read_csv(datapath, delim_whitespace=True, header=None)
+        self.data = pd.read_csv(datapath, delimiter="[ \s]*,[ \s]*", header=None, engine='python')
         self.columns = ["age","workclass","fnlwgt","education","education-num","marital-status","occupation","relationship","race","sex","capital-gain","capital-loss","hours-per-week","native-country","moreless"]
         self.data.columns = self.columns
         self.features = self.columns[:len(self.columns)-1]
@@ -20,7 +43,7 @@ class main:
         mapping = {"Married-civ-spouse": 0, "Divorced": 1, "Never-married": 2, "Separated": 3, "Widowed": 4, "Married-spouse-absent": 5, "Married-AF-spouse": 6}
         self.data = self.data.replace({'marital-status': mapping})
 
-        mapping = "Tech-support": 0, "Craft-repair": 1, "Other-service": 2, "Sales": 3, "Exec-managerial": 4, "Prof-specialty": 5, "Handlers-cleaners": 6, "Machine-op-inspct": 7, "Adm-clerical": 8, "Farming-fishing": 9, "Transport-moving": 10, "Priv-house-serv": 11, "Protective-serv": 12, "Armed-Forces": 13}
+        mapping = {"Tech-support": 0, "Craft-repair": 1, "Other-service": 2, "Sales": 3, "Exec-managerial": 4, "Prof-specialty": 5, "Handlers-cleaners": 6, "Machine-op-inspct": 7, "Adm-clerical": 8, "Farming-fishing": 9, "Transport-moving": 10, "Priv-house-serv": 11, "Protective-serv": 12, "Armed-Forces": 13}
         self.data = self.data.replace({'occupation': mapping})
         
         mapping = {"Wife": 0, "Own-child": 1, "Husband": 2, "Not-in-family": 3, "Other-relative": 4, "Unmarried": 5}
@@ -44,10 +67,143 @@ class main:
         # split data into multiple frames
         self.data_k_split = np.array_split(self.data, self.k)
 
+    def sigmoid(self, z):
+        return (1/(1 + np.exp(-z)))
+    
+    def loss(self, h, y):
+        return (-y * np.log(h) - (1 - y) * np.log(1 - h)).mean()
+    
+    def get_errors(self):
+        for theta in self.thetas:
+            pred_prob = self.sigmoid(np.dot(self.X, theta)).round()
+            final_loss = (self.Y == pred_prob).mean()
+            # print(theta)
+            self.validation_errors.append(final_loss)
+    
+    def logistic_regression_validate(self):
+        self.X = self.validation_set.iloc[:,0:14]
+        intercept = np.ones((self.X.shape[0], 1))
+        self.X = np.concatenate((intercept, self.X), axis=1)
+        self.X = np.array(self.X, dtype = 'float')
+        # normalizing data
+        self.X = (self.X - self.X.mean())/self.X.std()
+        self.Y = self.validation_set.iloc[:,14:15].values
+        self.Y = np.array(self.Y, dtype = 'float')
+
+        pred_prob = self.sigmoid(np.dot(self.X, self.theta)).round()
+        final_loss = (self.Y == pred_prob).mean()
+        self.final_validation_error.append(final_loss)
+        self.get_errors()
+        print("Validation error for fold #" + str(self.validating_index) + ":", final_loss)
+
+    
+    def logistic_regression_train(self):
+        self.X = self.training_set.iloc[:,0:14]
+        intercept = np.ones((self.X.shape[0], 1))
+        self.X = np.concatenate((intercept, self.X), axis=1)
+        self.X = np.array(self.X, dtype = 'float')
+        # normalizing data
+        self.X = (self.X - self.X.mean())/self.X.std()
+        self.Y = self.training_set.iloc[:,14:15].values
+        self.Y = np.array(self.Y, dtype = 'float')
+
+        self.thetas = []
+        
+        # weights initialization
+        self.theta = np.zeros((self.X.shape[1], 1))
+        
+        for i in range(self.iter):
+            z = np.dot(self.X, self.theta)
+            h = self.sigmoid(z)
+            gradient = np.dot(self.X.T, (h - self.Y)) / self.Y.size
+            self.theta -= self.rate * gradient
+            self.thetas.append(np.copy(self.theta))
+            z = np.dot(self.X, self.theta)
+            h = self.sigmoid(z)
+            self.train_errors.append(self.loss(h, self.Y))
+            # print(f'loss: {self.loss(h, self.Y)} \t')
+        final_loss = self.loss(h, self.Y)
+        self.final_train_error.append(final_loss)
+        print("Training error for fold #" + str(self.validating_index) + ":", final_loss)
+    
+    def logistic_regression(self):
+        self.train_errors = []
+        self.validation_errors = []
+        self.final_train_error = []
+        self.final_validation_error = []
+        skip = False
+
+        if self.skip_train:
+            skip_ = input("previous cached models available. use them? (y for yes, default is no): ")
+            if skip_ == 'y' or skip_ == 'Y':
+                skip = True
+
+        for i in range(self.k):
+            self.thetas = []
+            self.validating_index = i
+            self.validation_set = pd.DataFrame(columns = self.columns)
+            self.training_set = pd.DataFrame(columns = self.columns)
+
+            for data_frame_index in range(self.k):
+                if data_frame_index == self.validating_index:
+                    self.validation_set = pd.concat([self.validation_set, self.data_k_split[data_frame_index]])
+                else:
+                    self.training_set = pd.concat([self.training_set, self.data_k_split[data_frame_index]])
+            if skip:
+                self.theta = self.pickle_load(self.validating_index)
+                self.thetas = self.pickle_load(str(self.validating_index) + "_")
+            else:
+                self.logistic_regression_train()
+            self.logistic_regression_validate()
+            print()
+        if not skip:
+            print("Average train error: ", np.mean(np.array(self.final_train_error)))
+            self.pickle_save(self.final_train_error, 'train_errors')
+        print("Average validation error: ", np.mean(np.array(self.final_validation_error)))
+        self.pickle_save(self.final_validation_error, 'test_errors')
+
+        train_errors = []
+        validation_errors = []
+        for i in range(self.k):
+            if not skip:
+                train_errors.append(self.train_errors[i*self.iter:(i+1)*self.iter])
+            validation_errors.append(np.array(self.validation_errors[i*self.iter:(i+1)*self.iter]))
+
+        if not skip:
+            self.train_errors = np.mean(np.array(train_errors), axis=0)
+        self.validation_errors = np.mean(np.array(validation_errors), axis=0)
+        print(self.validation_errors)
+
+        # plot error vs iterations
+        if not skip:
+            fig, ax = plt.subplots()
+            ax.plot(np.arange(self.iter), self.train_errors, 'r')
+            ax.set_xlabel('Iterations')
+            ax.set_ylabel('Error')
+            ax.set_title('Error vs. Training Epoch')
+
+        fig, ax = plt.subplots()
+        ax.plot(np.arange(self.iter), self.validation_errors, 'r')
+        ax.set_xlabel('Iterations')
+        ax.set_ylabel('Error')
+        ax.set_title('Error vs. Validation Epoch')
+
+        plt.show()
+
     def __init__(self):
         self.path = paths()
+
+        self.skip_train = False
+        self.k = 5
+        self.iter = 1000
+        self.rate = 0.1
+
         datapath_train = self.path.Logistic_Regression + "/data_1/train.csv"
         self.read_data(datapath_train)
+
+        self.question_number = '2'
+        self.question_part = 'aa'
+        self.logistic_regression()
         pass
 
 if __name__ == "__main__":
