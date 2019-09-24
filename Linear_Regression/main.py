@@ -5,7 +5,7 @@ import pandas as pd
 import chart_studio.plotly as py
 import matplotlib.pyplot as plt
 from matplotlib import style
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import Ridge, Lasso
 from sklearn.model_selection import GridSearchCV
 
 from paths import paths
@@ -62,8 +62,8 @@ class main:
     
     def error_function(self):
         # Error function: (1/2N) * (XT - Y)^2 where T is theta
-        error_values = np.power(((self.X @ self.theta.T) - self.Y), 2)
-        return np.sum(error_values)/(2 * len(self.X))
+        error_values = np.power(np.mean(np.power(((self.X @ self.theta.T) - self.Y), 2)), 0.5)
+        return error_values
     
     def get_errors(self):
         for theta in self.thetas:
@@ -275,8 +275,12 @@ class main:
         
         # tune the alpha_ridge based on the 80% remaining data.
         self.X = self.remaining_data.iloc[:,0:8].values
+        # normalizing self.X
+        self.X = (self.X - self.X.mean())/self.X.std()
         self.Y = self.remaining_data.iloc[:,8:9].values
         # split the remaining 80% data for training and testing.
+        self.remaining_data = np.concatenate((self.X, self.Y), axis = 1)
+        self.remaining_data = pd.DataFrame(data = self.remaining_data, columns=self.columns)
         self.remaining_data = np.array_split(self.remaining_data, self.k)
 
     def tune_param_ridge(self):
@@ -294,6 +298,10 @@ class main:
         self.scores = self.grid.cv_results_['mean_test_score']
         self.scores_std = self.grid.cv_results_['std_test_score']
     
+    def error_function_ridge(self):
+        error_values = np.power(np.mean(np.power(((self.X @ self.theta.T) - self.Y), 2)), 0.5) + self.alpha_ridge * np.power(np.sum(self.theta), 2) / len(self.X)
+        return error_values
+    
     def gradientDescent_ridge(self):
         errors = np.zeros(self.iters)
         for i in range(self.iters):
@@ -301,7 +309,7 @@ class main:
             # T = T - (\alpha/2N) * X*(XT - Y) + \alpha'*T
             self.theta = self.theta - (self.alpha/len(self.X)) * (self.X.T @ (self.X @ self.theta.T - self.Y)).T + ((self.alpha_ridge/len(self.X)) * self.theta)
             self.thetas.append(self.theta)
-            errors[i] = self.error_function()
+            errors[i] = self.error_function_ridge()
         self.pickle_save(self.theta, self.testing_index)
         self.pickle_save(self.thetas, str(self.testing_index) + "_")
         return errors
@@ -316,7 +324,7 @@ class main:
         self.theta = np.zeros([1,9]) # the parameters
         errors = self.gradientDescent_ridge()
         self.train_errors.extend(errors)
-        train_error = self.error_function()
+        train_error = self.error_function_ridge()
         self.final_train_error.append(train_error)
         print("Training error for fold number: = ", self.testing_index, ": ", train_error)
 
@@ -328,7 +336,7 @@ class main:
         self.X = (self.X - self.X.mean())/self.X.std()
         self.Y = self.validation_set.iloc[:,8:9].values
         self.get_errors()
-        test_error = self.error_function()
+        test_error = self.error_function_ridge()
         self.final_test_error.append(test_error)
         print("Validation error for fold number: = ", self.testing_index, ": ", test_error)
     
@@ -339,7 +347,7 @@ class main:
         # normalizing data
         self.X = (self.X - self.X.mean())/self.X.std()
         self.Y = self.test_set.iloc[:,8:9].values
-        test_error = self.error_function()
+        test_error = self.error_function_ridge()
         print("Test error: = ", test_error)
 
     def linear_regression_ridge(self):
@@ -369,7 +377,7 @@ class main:
         if not skip:
             print("Average train error: ", np.mean(np.array(self.final_train_error)))
             self.pickle_save(self.final_train_error, 'train_errors')
-        print("Average test error: ", np.mean(np.array(self.final_test_error)))
+        print("Average validation error: ", np.mean(np.array(self.final_test_error)))
         self.pickle_save(self.final_test_error, 'test_errors')
 
         train_errors = []
@@ -401,6 +409,145 @@ class main:
         plt.show()
 
     def plot_tuning_ridge(self):
+        plt.figure().set_size_inches(8, 6)
+        plt.semilogx(self.alphas, self.scores)
+        # plot error lines showing +/- std. errors of the self.scores
+        std_error = self.scores_std / np.sqrt(self.k)
+
+        plt.semilogx(self.alphas, self.scores + std_error, 'b--')
+        plt.semilogx(self.alphas, self.scores - std_error, 'b--')
+
+        # alpha=0.2 controls the translucency of the fill color
+        plt.fill_between(self.alphas, self.scores + std_error, self.scores - std_error, alpha=0.2)
+
+        plt.ylabel('CV score +/- std error')
+        plt.xlabel('alpha')
+        plt.axhline(np.max(self.scores), linestyle='--', color='.5')
+        plt.xlim([self.alphas[0], self.alphas[-1]])
+        plt.show()
+
+    def tune_param_lasso(self):
+        print("Finding the best hyperparameter for lasso regularization")
+        self.alphas = np.logspace(-1, 1, 1000)
+        # alphas = np.array([1,0.1,0.01,0.001,0.0001,0])
+        tuned_parameters = [{'alpha': self.alphas}]
+        model = Lasso()
+        self.grid = GridSearchCV(cv = self.k, estimator=model, param_grid=tuned_parameters)
+        # print(grid.get_params())
+        self.grid.fit(self.X, self.Y)
+        # print(self.grid.best_params_)
+        print('Best hyperparameter for Ridge regularization: ', self.grid.best_estimator_.alpha)
+        self.alpha_ridge = self.grid.best_estimator_.alpha
+        self.scores = self.grid.cv_results_['mean_test_score']
+        self.scores_std = self.grid.cv_results_['std_test_score']
+    
+    def gradientDescent_lasso(self):
+        errors = np.zeros(self.iters)
+        for i in range(self.iters):
+            # gradient descent
+            # T = T - (\alpha/2N) * X*(XT - Y) + \alpha'*T
+            self.theta = self.theta - (self.alpha/len(self.X)) * (self.X.T @ (self.X @ self.theta.T - self.Y)).T + ((self.alpha_ridge/len(self.X)) * self.theta)
+            self.thetas.append(self.theta)
+            errors[i] = self.error_function()
+        self.pickle_save(self.theta, self.testing_index)
+        self.pickle_save(self.thetas, str(self.testing_index) + "_")
+        return errors
+
+    def linear_regression_train_lasso(self):
+        self.X = self.training_set.iloc[:,0:8]
+        ones = np.ones([self.X.shape[0],1])
+        self.X = np.concatenate((ones, self.X),axis=1)
+        # normalizing data
+        self.X = (self.X - self.X.mean())/self.X.std()
+        self.Y = self.training_set.iloc[:,8:9].values
+        self.theta = np.zeros([1,9]) # the parameters
+        errors = self.gradientDescent_ridge()
+        self.train_errors.extend(errors)
+        train_error = self.error_function()
+        self.final_train_error.append(train_error)
+        print("Training error for fold number: = ", self.testing_index, ": ", train_error)
+
+    def linear_regression_validation_lasso(self):
+        self.X = self.validation_set.iloc[:,0:8]
+        ones = np.ones([self.X.shape[0],1])
+        self.X = np.concatenate((ones, self.X),axis=1)
+        # normalizing data
+        self.X = (self.X - self.X.mean())/self.X.std()
+        self.Y = self.validation_set.iloc[:,8:9].values
+        self.get_errors()
+        test_error = self.error_function()
+        self.final_test_error.append(test_error)
+        print("Validation error for fold number: = ", self.testing_index, ": ", test_error)
+    
+    def linear_regression_test_lasso(self):
+        self.X = self.test_set.iloc[:,0:8]
+        ones = np.ones([self.X.shape[0],1])
+        self.X = np.concatenate((ones, self.X),axis=1)
+        # normalizing data
+        self.X = (self.X - self.X.mean())/self.X.std()
+        self.Y = self.test_set.iloc[:,8:9].values
+        test_error = self.error_function()
+        print("Test error: = ", test_error)
+
+    def linear_regression_lasso(self):
+        self.train_errors = []
+        self.test_errors = []
+        self.final_train_error = []
+        self.final_test_error = []
+        skip = False
+        
+        for i in range(self.k):
+            self.thetas = []
+            self.testing_index = i
+            self.validation_set = pd.DataFrame(columns = self.columns)
+            self.training_set = pd.DataFrame(columns = self.columns)
+            for data_frame_index in range(self.k):
+                if data_frame_index == self.testing_index:
+                    self.validation_set = pd.concat([self.validation_set, self.remaining_data[data_frame_index]])
+                else:
+                    self.training_set = pd.concat([self.training_set, self.remaining_data[data_frame_index]])
+            if skip:
+                self.theta = self.pickle_load(self.testing_index)
+                self.thetas = self.pickle_load(str(self.testing_index) + "_")
+            else:
+                self.linear_regression_train_lasso()
+            self.linear_regression_validation_lasso()
+            print()
+        if not skip:
+            print("Average train error: ", np.mean(np.array(self.final_train_error)))
+            self.pickle_save(self.final_train_error, 'train_errors')
+        print("Average test error: ", np.mean(np.array(self.final_test_error)))
+        self.pickle_save(self.final_test_error, 'test_errors')
+
+        train_errors = []
+        test_errors = []
+        for i in range(self.k):
+            if not skip:
+                train_errors.append(self.train_errors[i*self.iters:(i+1)*self.iters])
+            test_errors.append(np.array(self.test_errors[i*self.iters:(i+1)*self.iters]))
+
+        if not skip:
+            self.train_errors = np.mean(np.array(train_errors), axis=0)
+        self.test_errors = np.mean(np.array(test_errors), axis=0)
+
+        self.linear_regression_test_lasso()
+
+        # plot error vs iterations
+        if not skip:
+            fig, ax = plt.subplots()
+            ax.plot(np.arange(self.iters), self.train_errors, 'r')
+            ax.set_xlabel('Iterations')
+            ax.set_ylabel('Error')
+            ax.set_title('Error vs. Training Epoch')
+
+        fig, ax = plt.subplots()
+        ax.plot(np.arange(self.iters), self.test_errors, 'r')
+        ax.set_xlabel('Iterations')
+        ax.set_ylabel('Error')
+        ax.set_title('Error vs. Testing Epoch')
+        plt.show()
+
+    def plot_tuning_lasso(self):
         plt.figure().set_size_inches(8, 6)
         plt.semilogx(self.alphas, self.scores)
         # plot error lines showing +/- std. errors of the self.scores
@@ -466,8 +613,14 @@ class main:
         # self.tune_param_ridge()
         # self.plot_tuning_ridge()
         self.alpha_ridge = 0.7996554525892349
-        self.alpha_ridge = 1.64
+        self.alpha_ridge = 1.8761746914391204
         self.linear_regression_ridge()
+
+        input("Press enter for the next part")
+        self.question_part = 'bb'
+        self.lowest_val_error_index = 1
+        self.generate_train_test_set()
+        self.tune_param_lasso()
 
 
 if __name__ == "__main__":
