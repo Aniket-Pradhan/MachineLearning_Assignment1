@@ -83,6 +83,8 @@ class main:
         self.X = self.test_set.iloc[:,0:8]
         ones = np.ones([self.X.shape[0],1])
         self.X = np.concatenate((ones, self.X),axis=1)
+        # normalizing data
+        self.X = (self.X - self.X.mean())/self.X.std()
         self.Y = self.test_set.iloc[:,8:9].values
         self.get_errors()
         test_error = self.error_function()
@@ -93,6 +95,8 @@ class main:
         self.X = self.training_set.iloc[:,0:8].values
         ones = np.ones([self.X.shape[0],1])
         self.X = np.concatenate((ones, self.X),axis=1)
+        # normalizing data
+        self.X = (self.X - self.X.mean())/self.X.std()
         self.Y = self.training_set.iloc[:,8:9].values
         self.theta = np.zeros([1,9]) # the parameters
         # gradient descent
@@ -185,7 +189,9 @@ class main:
         self.X = self.test_set.iloc[:,0:8]
         ones = np.ones([self.X.shape[0],1])
         self.X = np.concatenate((ones, self.X),axis=1)
-        self.Y = self.test_set.iloc[:,8:9].values
+        self.X = np.array(self.X, dtype = 'float')
+        self.Y = self.training_set.iloc[:,8:9].values
+        self.Y = np.array(self.Y, dtype = 'float')
         test_error = self.error_function()
         self.final_test_error.append(test_error)
         print("Testing error for fold number: = ", self.testing_index, ": ", test_error)
@@ -216,6 +222,7 @@ class main:
         model_dir = self.path.abalone_models
         self.check_create_directory(model_dir)
         ls_models = os.listdir(model_dir)
+        self.skip_train = False
         if self.question_part == 'a':
             model_prefix = self.question_number + self.question_part
             check_models = []
@@ -274,6 +281,7 @@ class main:
 
     def tune_param(self):
         self.alphas = np.array([1, 0.1, 0.01, 0.001, 0.0001, 0])
+        self.alphas = np.logspace(-4, 1, 1000)
         print(self.alphas)
         # alphas = np.array([1,0.1,0.01,0.001,0.0001,0])
         tuned_parameters = [{'alpha': self.alphas}]
@@ -289,14 +297,15 @@ class main:
     
     def error_function_ridge(self):
         # Error function: (1/2N) * (XT - Y)^2 where T is theta
-        print((np.dot(self.theta.T, self.theta).shape))
-        error_values = np.sum(np.power(((self.X @ self.theta.T) - self.Y), 2)) + (self.alpha_ridge * np.dot(self.theta.T, self.theta))
-        # error_values = np.sum(np.power(((self.X @ self.theta.T) - self.Y), 2))
+        # print((np.dot(self.theta.T, self.theta).shape))
+        # error_values = np.sum(np.power(((self.X @ self.theta.T) - self.Y), 2)) + (self.alpha_ridge * np.dot(self.theta.T, self.theta))
+        error_values = np.sum(np.power(((self.X @ self.theta.T) - self.Y), 2))
         return np.sum(error_values)/(2 * len(self.X))
     
     def gradientDescent_ridge(self):
         # array of error values for respective iteration.
         errors = np.zeros(self.iters)
+        print(self.alpha_ridge)
         for i in range(self.iters):
             # gradient descent
             # T = T - (\alpha/2N) * X*(XT - Y)
@@ -304,7 +313,7 @@ class main:
             # self.theta = self.theta - (self.alpha/len(self.X)) * (self.X.T @ (self.X @ self.theta.T - self.Y)).T
             self.thetas.append(self.theta)
             errors[i] = self.error_function_ridge()
-            print(errors[i])
+            # print(errors[i])
         self.pickle_save(self.theta, self.testing_index)
         self.pickle_save(self.thetas, str(self.testing_index) + "_")
         return errors
@@ -313,6 +322,8 @@ class main:
         self.X = self.training_set.iloc[:,0:8]
         ones = np.ones([self.X.shape[0],1])
         self.X = np.concatenate((ones, self.X),axis=1)
+        # normalizing data
+        # self.X = (self.X - self.X.mean())/self.X.std()
         self.Y = self.training_set.iloc[:,8:9].values
         self.theta = np.zeros([1,9]) # the parameters
         # gradient descent
@@ -326,6 +337,8 @@ class main:
         self.X = self.test_set.iloc[:,0:8]
         ones = np.ones([self.X.shape[0],1])
         self.X = np.concatenate((ones, self.X),axis=1)
+        # normalizing data
+        # self.X = (self.X - self.X.mean())/self.X.std()
         self.Y = self.test_set.iloc[:,8:9].values
         # self.get_errors()
         test_error = self.error_function_ridge()
@@ -417,22 +430,22 @@ class main:
         self.read_data()
         self.question_number = '1'
 
-        ## Question 1
-        # # Part a
-        # self.question_part = 'a'
-        # self.check_pre_models()
-        # self.linear_regression()
+        # Question 1
+        # Part a
+        self.question_part = 'aa'
+        self.check_pre_models()
+        self.linear_regression()
 
-        # # Part b
-        # input("Press enter for the next part")
-        # self.question_part = 'b'
-        # self.check_pre_models()
-        # self.linear_regression_closed_form()
+        # Part b
+        input("Press enter for the next part")
+        self.question_part = 'ab'
+        self.check_pre_models()
+        self.linear_regression_closed_form()
 
-        # # Part c
-        # input("Press enter for the next part")
-        # self.question_part = 'c'
-        # self.plot_errors_part_ab()
+        # Part c
+        input("Press enter for the next part")
+        self.question_part = 'ac'
+        self.plot_errors_part_ab()
 
         ## Explanation/Observation
         """
