@@ -8,6 +8,7 @@ class paths:
         self.abalone_dataset = self.datasets + "/abalone"
         self.models = self.root + "/models"
         self.abalone_models = self.models + "/abalone"
+        self.Linear_Regression = self.root + "/Linear_Regression"
 
     def init_urls(self):
         self.abalone_dataset_url = "ftp://ftp.cs.toronto.edu/pub/neuron/delve/data/tarfiles/abalone.tar.gz"
