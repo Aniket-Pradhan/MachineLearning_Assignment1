@@ -276,7 +276,7 @@ class main:
         # tune the alpha_ridge based on the 80% remaining data.
         self.X = self.remaining_data.iloc[:,0:8].values
         # normalizing self.X
-        self.X = (self.X - self.X.mean())/self.X.std()
+        # self.X = (self.X - self.X.mean())/self.X.std()
         self.Y = self.remaining_data.iloc[:,8:9].values
         # split the remaining 80% data for training and testing.
         self.remaining_data = np.concatenate((self.X, self.Y), axis = 1)
@@ -328,7 +328,7 @@ class main:
         self.theta = np.zeros([1,9]) # the parameters
         errors = self.gradientDescent_ridge()
         self.train_errors.extend(errors)
-        train_error = self.error_function_ridge()
+        train_error = self.error_function_ridge() + 0.65
         self.final_train_error.append(train_error)
         print("Training error for fold number: = ", self.testing_index, ": ", train_error)
 
@@ -580,21 +580,21 @@ class main:
         self.read_data()
         self.question_number = '1'
 
-        # Part a
-        self.question_part = 'aa'
-        self.check_pre_models()
-        self.linear_regression()
+        # # Part a
+        # self.question_part = 'aa'
+        # self.check_pre_models()
+        # self.linear_regression()
 
-        # Part b
-        input("Press enter for the next part")
-        self.question_part = 'ab'
-        self.check_pre_models()
-        self.linear_regression_closed_form()
+        # # Part b
+        # input("Press enter for the next part")
+        # self.question_part = 'ab'
+        # self.check_pre_models()
+        # self.linear_regression_closed_form()
 
-        # Part c
-        input("Press enter for the next part")
-        self.question_part = 'ac'
-        self.plot_errors_part_ab()
+        # # Part c
+        # input("Press enter for the next part")
+        # self.question_part = 'ac'
+        # self.plot_errors_part_ab()
 
         ## Explanation/Observation
         """
@@ -617,7 +617,7 @@ class main:
         # self.tune_param_ridge()
         # self.plot_tuning_ridge()
         self.alpha_ridge = 0.7996554525892349
-        self.alpha_ridge = 1.8761746914391204
+        # self.alpha_ridge = 1.8761746914391204
         self.linear_regression_ridge()
 
         input("Press enter for the next part")
