@@ -59,7 +59,7 @@ class second:
         regularization = 0
         for i in self.theta_lasso.T.tolist():
             regularization += i[0]
-        error_values = np.sqrt(np.mean(((self.X @ self.theta_ridge.T) - self.Y)**2))
+        error_values = np.sqrt(np.mean(((self.X @ self.theta_lasso.T) - self.Y)**2))
         error_values += self.alpha_lasso * regularization / len(self.X)
         return error_values
 
