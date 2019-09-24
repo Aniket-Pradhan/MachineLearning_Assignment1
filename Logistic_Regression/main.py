@@ -75,8 +75,13 @@ class main:
     
     def get_errors(self):
         for theta in self.thetas:
-            pred_prob = self.sigmoid(np.dot(self.X, theta)).round()
-            final_loss = (self.Y == pred_prob).mean()
+            z = np.dot(self.X, theta)
+            h = self.sigmoid(z)
+            final_loss = self.loss(h, self.Y)
+
+            # pred_prob = self.sigmoid(np.dot(self.X, theta)).round()
+            # final_loss = (self.Y == pred_prob).mean()
+            # print(final_loss)
             # print(theta)
             self.validation_errors.append(final_loss)
     
@@ -90,10 +95,17 @@ class main:
         self.Y = self.validation_set.iloc[:,14:15].values
         self.Y = np.array(self.Y, dtype = 'float')
 
-        pred_prob = self.sigmoid(np.dot(self.X, self.theta)).round()
-        final_loss = (self.Y == pred_prob).mean()
-        self.final_validation_error.append(final_loss)
         self.get_errors()
+
+        #loss
+        z = np.dot(self.X, self.theta)
+        h = self.sigmoid(z)
+        final_loss = self.loss(h, self.Y)
+
+        # accuracy
+        # pred_prob = self.sigmoid(np.dot(self.X, self.theta)).round()
+        # final_loss = (self.Y == pred_prob).mean()
+        self.final_validation_error.append(final_loss)
         print("Validation error for fold #" + str(self.validating_index) + ":", final_loss)
 
     
@@ -172,7 +184,6 @@ class main:
         if not skip:
             self.train_errors = np.mean(np.array(train_errors), axis=0)
         self.validation_errors = np.mean(np.array(validation_errors), axis=0)
-        print(self.validation_errors)
 
         # plot error vs iterations
         if not skip:
