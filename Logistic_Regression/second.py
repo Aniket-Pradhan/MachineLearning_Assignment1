@@ -1,8 +1,11 @@
 import os
 import pickle
 import numpy as np
+import matplotlib.pyplot as plt
 from mlxtend.data import loadlocal_mnist
 from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import label_binarize
+from sklearn.metrics import roc_curve
 
 from paths import paths
 from download_datasets import download_datasets
@@ -124,6 +127,36 @@ class second:
             print("testing accuracy for class " + str(ind) + " for L2 regularization: ", self.test_ridge_avg_list[ind])
             print()
     
+    def plot_roc(self):
+        Y = label_binarize(self.Y_test, classes = self.classes)
+        
+        # for i in range(self.Y_test.size):
+        #     print(Y[:,5][i], self.Y_test[i])
+        #     if self.Y_test[i] == 5:
+        #         input()
+        # self.classes = [0, 1, 2, 3]
+
+        for class_index in self.classes:
+            y = []
+            for element_index in range(self.X_test.shape[0]):
+                a = self.reg_ridge.predict(self.X_test[element_index].reshape(1,-1))
+                # print(a)
+                if a == class_index:
+                    a = 1
+                else:
+                    a = 0
+                y.append(a)
+            y = np.array(y)
+            fpr, tpr, thresholds = roc_curve(Y[:, class_index], y)
+            lw = 2
+            plt.plot(fpr, tpr, lw=lw)
+            plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+            plt.xlim([0.0, 1.0])
+            plt.ylim([0.0, 1.05])
+        plt.show()
+        print(fpr, tpr)
+        # pass
+    
     def __init__(self):
         self.reg_ridge_name = "reg_ridge_model"
         self.reg_lasso_name = "reg_lasso_model"
@@ -147,10 +180,12 @@ class second:
             self.reg_lasso = self.pickle_load(self.reg_lasso_name)
         self.classes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         
-        self.train_error()
-        self.test_error()
+        # self.train_error()
+        # self.test_error()
 
-        self.pretty_print_accuracy()
+        # self.pretty_print_accuracy()
+
+        self.plot_roc()
 
 if __name__ == "__main__":
     second = second()
