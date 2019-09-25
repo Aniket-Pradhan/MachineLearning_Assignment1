@@ -100,7 +100,10 @@ class main:
 
     def sigmoid(self, z):
         return (1/(1 + np.exp(-z)))
-        
+    
+    def loss(self, h):
+        return (-self.Y * np.log(h) - (1 - self.Y) * np.log(1 - h)).mean()
+
     def log_likelihood(self):
         z = np.dot(self.X, self.theta)
         ll = np.sum(self.Y * z - np.log(1 + np.exp(z)) )
@@ -118,11 +121,15 @@ class main:
             # h = self.sigmoid(z)
             # final_loss = self.loss(h, self.Y)
             z = np.dot(self.X, theta)
+            h = self.sigmoid(z)
+
+            # accuracy
             pred_prob = self.sigmoid(z).round()
             final_loss = (self.Y == pred_prob).mean()
-            # print(final_loss)
-            # print(theta)
             self.validation_accuracy.append(final_loss)
+
+            # loss
+            self.validation_loss.append(self.loss(h))
     
     def logistic_regression_validate(self):
         self.X = self.validation_set.iloc[:,0:14]
@@ -201,11 +208,12 @@ class main:
             pred_prob = self.sigmoid(z).round()
             final_loss = (self.Y == pred_prob).mean()
             self.train_accuracy.append(final_loss)
+            # print(final_loss)
 
             # loss
             # z = np.dot(self.X, self.theta)
-            # h = self.sigmoid(z)
-            # self.train_accuracy.append(self.loss(h, self.Y))
+            h = self.sigmoid(z)
+            self.train_loss.append(self.loss(h))
             # print(f'loss: {self.loss(h, self.Y)} \t')
         # final accuracy
         z = np.dot(self.X, self.theta)
@@ -216,7 +224,9 @@ class main:
         print("Training accuracy for fold #" + str(self.validating_index) + ":", final_loss)
     
     def logistic_regression(self):
+        self.train_loss = []
         self.train_accuracy = []
+        self.validation_loss = []
         self.validation_accuracy = []
         self.final_train_accuracy = []
         self.final_validation_accuracy = []
@@ -255,27 +265,37 @@ class main:
 
         train_errors = []
         validation_errors = []
+        train_losses = []
+        validation_losses = []
         for i in range(self.k):
             if not skip:
+                train_losses.append(self.train_loss[i*self.iter:(i+1)*self.iter])
                 train_errors.append(self.train_accuracy[i*self.iter:(i+1)*self.iter])
             validation_errors.append(np.array(self.validation_accuracy[i*self.iter:(i+1)*self.iter]))
+            validation_losses.append(np.array(self.validation_loss[i*self.iter:(i+1)*self.iter]))
 
         if not skip:
+            self.train_loss = np.mean(np.array(train_losses), axis=0)
             self.train_accuracy = np.mean(np.array(train_errors), axis=0)
         self.validation_accuracy = np.mean(np.array(validation_errors), axis=0)
+        self.validation_loss = np.mean(np.array(validation_losses), axis=0)
 
         # plot error vs iterations
         if not skip:
             fig, ax = plt.subplots()
-            ax.plot(np.arange(self.iter), self.train_accuracy, 'r')
+            ax.plot(np.arange(self.iter), self.train_accuracy, 'r', label = "Accuracy")
+            ax.plot(np.arange(self.iter), self.train_loss, 'b', label = "Loss")
             ax.set_xlabel('Iterations')
             ax.set_ylabel('Accuracy')
+            ax.legend(loc='lower right')
             ax.set_title('Accuracy vs. Training Epoch')
 
         fig, ax = plt.subplots()
-        ax.plot(np.arange(self.iter), self.validation_accuracy, 'r')
+        ax.plot(np.arange(self.iter), self.validation_accuracy, 'r', label = "Accuracy")
+        ax.plot(np.arange(self.iter), self.validation_loss, 'b', label = "Loss")
         ax.set_xlabel('Iterations')
         ax.set_ylabel('Accuracy')
+        ax.legend(loc='lower right')
         ax.set_title('Accuracy vs. Validation Epoch')
 
         plt.show()
@@ -309,7 +329,8 @@ class main:
 
             # loss
             # z = np.dot(self.X, self.theta)
-            # h = self.sigmoid(z)
+            h = self.sigmoid(z)
+            self.train_loss.append(self.loss(h))
             # self.train_accuracy.append(self.loss(h, self.Y))
             # print(f'loss: {self.loss(h, self.Y)} \t')
         # final accuracy
@@ -320,7 +341,9 @@ class main:
         print("Training accuracy for fold #" + str(self.validating_index) + ":", final_loss)
     
     def logistic_regression_ridge(self):
+        self.train_loss = []
         self.train_accuracy = []
+        self.validation_loss = []
         self.validation_accuracy = []
         self.final_train_accuracy = []
         self.final_validation_accuracy = []
@@ -358,29 +381,38 @@ class main:
 
         train_errors = []
         validation_errors = []
+        train_losses = []
+        validation_losses = []
         for i in range(self.k):
             if not skip:
+                train_losses.append(self.train_loss[i*self.iter:(i+1)*self.iter])
                 train_errors.append(self.train_accuracy[i*self.iter:(i+1)*self.iter])
             validation_errors.append(np.array(self.validation_accuracy[i*self.iter:(i+1)*self.iter]))
+            validation_losses.append(np.array(self.validation_loss[i*self.iter:(i+1)*self.iter]))
 
         if not skip:
+            self.train_loss = np.mean(np.array(train_losses), axis=0)
             self.train_accuracy = np.mean(np.array(train_errors), axis=0)
         self.validation_accuracy = np.mean(np.array(validation_errors), axis=0)
+        self.validation_loss = np.mean(np.array(validation_losses), axis=0)
 
         # plot error vs iterations
         if not skip:
             fig, ax = plt.subplots()
-            ax.plot(np.arange(self.iter), self.train_accuracy, 'r')
+            ax.plot(np.arange(self.iter), self.train_accuracy, 'r', label = "Accuracy")
+            ax.plot(np.arange(self.iter), self.train_loss, 'b', label = "Loss")
             ax.set_xlabel('Iterations')
             ax.set_ylabel('Accuracy')
+            ax.legend(loc='lower right')
             ax.set_title('Accuracy vs. Training Epoch')
 
         fig, ax = plt.subplots()
-        ax.plot(np.arange(self.iter), self.validation_accuracy, 'r')
+        ax.plot(np.arange(self.iter), self.validation_accuracy, 'r', label = "Accuracy")
+        ax.plot(np.arange(self.iter), self.validation_loss, 'b', label = "Loss")
         ax.set_xlabel('Iterations')
         ax.set_ylabel('Accuracy')
+        ax.legend(loc='lower right')
         ax.set_title('Accuracy vs. Validation Epoch')
-
         plt.show()
 
     def logistic_regression_train_lasso(self):
@@ -412,7 +444,8 @@ class main:
 
             # loss
             # z = np.dot(self.X, self.theta)
-            # h = self.sigmoid(z)
+            h = self.sigmoid(z)
+            self.train_loss.append(self.loss(h))
             # self.train_accuracy.append(self.loss(h, self.Y))
             # print(f'loss: {self.loss(h, self.Y)} \t')
         # final accuracy
@@ -423,7 +456,9 @@ class main:
         print("Training accuracy for fold #" + str(self.validating_index) + ":", final_loss)
     
     def logistic_regression_lasso(self):
+        self.train_loss = []
         self.train_accuracy = []
+        self.validation_loss = []
         self.validation_accuracy = []
         self.final_train_accuracy = []
         self.final_validation_accuracy = []
@@ -461,29 +496,38 @@ class main:
 
         train_errors = []
         validation_errors = []
+        train_losses = []
+        validation_losses = []
         for i in range(self.k):
             if not skip:
+                train_losses.append(self.train_loss[i*self.iter:(i+1)*self.iter])
                 train_errors.append(self.train_accuracy[i*self.iter:(i+1)*self.iter])
             validation_errors.append(np.array(self.validation_accuracy[i*self.iter:(i+1)*self.iter]))
+            validation_losses.append(np.array(self.validation_loss[i*self.iter:(i+1)*self.iter]))
 
         if not skip:
+            self.train_loss = np.mean(np.array(train_losses), axis=0)
             self.train_accuracy = np.mean(np.array(train_errors), axis=0)
         self.validation_accuracy = np.mean(np.array(validation_errors), axis=0)
+        self.validation_loss = np.mean(np.array(validation_losses), axis=0)
 
         # plot error vs iterations
         if not skip:
             fig, ax = plt.subplots()
-            ax.plot(np.arange(self.iter), self.train_accuracy, 'r')
+            ax.plot(np.arange(self.iter), self.train_accuracy, 'r', label = "Accuracy")
+            ax.plot(np.arange(self.iter), self.train_loss, 'b', label = "Loss")
             ax.set_xlabel('Iterations')
             ax.set_ylabel('Accuracy')
+            ax.legend(loc='lower right')
             ax.set_title('Accuracy vs. Training Epoch')
 
         fig, ax = plt.subplots()
-        ax.plot(np.arange(self.iter), self.validation_accuracy, 'r')
+        ax.plot(np.arange(self.iter), self.validation_accuracy, 'r', label = "Accuracy")
+        ax.plot(np.arange(self.iter), self.validation_loss, 'b', label = "Loss")
         ax.set_xlabel('Iterations')
         ax.set_ylabel('Accuracy')
+        ax.legend(loc='lower right')
         ax.set_title('Accuracy vs. Validation Epoch')
-
         plt.show()
 
     def __init__(self):
@@ -500,10 +544,11 @@ class main:
 
         self.question_number = '2'
         self.question_part = 'aa'
-        self.logistic_regression()
+        # self.logistic_regression()
 
         self.question_part = 'ab'
         print()
+        self.max_accuracy = -1
         input("Press enter to move to the next part")
         print("Ridge Logistic Regression")
         self.alpha_ridge = 1.2 #random
@@ -512,6 +557,7 @@ class main:
 
         self.question_part = 'ac'
         print()
+        self.max_accuracy = -1
         input("Press enter to move to the next part")
         print("Lasso Logistic Regression")
         self.alpha_lasso = 1.2 #random
