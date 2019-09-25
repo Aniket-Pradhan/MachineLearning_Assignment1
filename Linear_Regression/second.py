@@ -37,7 +37,7 @@ class second:
             # T = T - (\alpha/2N) * X*(XT - Y)
             self.theta = self.theta - (self.step_size/len(self.X)) * np.sum(self.X * (self.X @ self.theta.T - self.Y), axis=0)
         errors = self.error_function()
-        print(errors)
+        print(errors, "# error without regularization")
     
     def error_function_ridge(self):
         regularization = 0
@@ -53,7 +53,7 @@ class second:
             # T = T - (\alpha/2N) * X*(XT - Y) + \alpha'*T
             self.theta_ridge = self.theta_ridge - (self.step_size/len(self.X)) * (self.X.T @ (self.X @ self.theta_ridge.T - self.Y)).T - ((self.alpha_ridge/len(self.X)) * self.theta_ridge)
         errors = self.error_function_ridge()
-        print(errors)
+        print(errors, "# error with ridge")
 
     def error_function_lasso(self):
         regularization = 0
@@ -67,15 +67,15 @@ class second:
         for i in range(self.iters):
             self.theta_lasso = self.theta_lasso - (self.step_size/len(self.X)) * (self.X.T @ (self.X @ self.theta_lasso.T - self.Y)).T - ((self.alpha_lasso/len(self.X)) * np.sign(self.theta_lasso))
         errors = self.error_function()
-        print(errors)
+        print(errors, "# error with lasso")
 
     def __init__(self):
         self.path = paths()
 
         self.iters = 10000
         self.step_size = 0.0001
-        self.alpha_ridge = 0.6
-        self.alpha_lasso = 0.6
+        self.alpha_ridge = 0.6 # using a random alpha value
+        self.alpha_lasso = 0.6 # using a random alpha value
 
         self.theta = np.zeros([1,2]) # the parameter
         self.theta_ridge = np.zeros([1,2]) # the parameter
