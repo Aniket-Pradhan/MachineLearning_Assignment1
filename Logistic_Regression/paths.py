@@ -7,10 +7,10 @@ class paths:
         self.datasets = self.root + "/datasets"
         self.mnist = self.datasets + "/mnist"
         self.models = self.root + "/models"
-        self.mnist_models = self.models + "/mnist"
         self.income_models = self.models + "/income"
         self.Linear_Regression = self.root + "/Linear_Regression"
         self.Logistic_Regression = self.root + "/Logistic_Regression"
+        self.mnist_models = self.Logistic_Regression + "/mnist_models"
 
     def init_urls(self):
         self.train_images_url = "http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz"

@@ -42,7 +42,6 @@ class second:
 
     def load_training_data(self):
         self.X, self.Y = loadlocal_mnist(images_path=self.path.mnist + "/train_images", labels_path=self.path.mnist + "/train_labels")
-        print(self.X.shape, self.Y.shape)
         self.X = (self.X - self.X.mean())/self.X.std()
     
     def load_testing_data(self):
@@ -130,17 +129,10 @@ class second:
     def plot_roc(self):
         Y = label_binarize(self.Y_test, classes = self.classes)
         
-        # for i in range(self.Y_test.size):
-        #     print(Y[:,5][i], self.Y_test[i])
-        #     if self.Y_test[i] == 5:
-        #         input()
-        # self.classes = [0, 1, 2, 3]
-
         for class_index in self.classes:
             y = []
             for element_index in range(self.X_test.shape[0]):
                 a = self.reg_ridge.predict(self.X_test[element_index].reshape(1,-1))
-                # print(a)
                 if a == class_index:
                     a = 1
                 else:
@@ -149,19 +141,22 @@ class second:
             y = np.array(y)
             fpr, tpr, thresholds = roc_curve(Y[:, class_index], y)
             lw = 2
-            plt.plot(fpr, tpr, lw=lw)
-            plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
-            plt.xlim([0.0, 1.0])
-            plt.ylim([0.0, 1.05])
+            plt.plot(fpr, tpr, lw=lw, label = "ROC curve for class:" + str(class_index))
+        plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+        plt.xlim([0.0, 1])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('ROC Graph')
+        plt.legend(loc='lower right')
         plt.show()
-        print(fpr, tpr)
-        # pass
-    
+
     def __init__(self):
         self.reg_ridge_name = "reg_ridge_model"
         self.reg_lasso_name = "reg_lasso_model"
         self.check_ridge = False
         self.check_lasso = False
+        self.classes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
         self.path = paths()
         self.dl_data = download_datasets()
@@ -169,22 +164,38 @@ class second:
 
         self.load_training_data()
         self.load_testing_data()
+        retrain = False
 
-        if not self.check_ridge:
+        if self.check_ridge:
+            print("Using cached models from " + self.path.mnist_models + ". retraining the model would consume a lot of time")
+            retrain = input("Do you want to retrain the model ('y' for yes, default is no)?: ")
+            if retrain == 'y' or retrain == 'Y':
+                retrain = True
+            else:
+                retrain = False
+        if retrain:
             self.logistic_regression_train_ridge()
         else:
             self.reg_ridge = self.pickle_load(self.reg_ridge_name)
-        if not self.check_lasso:
+        
+        if self.check_lasso:
+            print("Using cached models from " + self.path.mnist_models + ". retraining the model would consume a lot of time")
+            retrain = input("Do you want to retrain the model ('y' for yes, default is no)?: ")
+            if retrain == 'y' or retrain == 'Y':
+                retrain = True
+            else:
+                retrain = False
+        if retrain:
             self.logistic_regression_train_lasso()
         else:
             self.reg_lasso = self.pickle_load(self.reg_lasso_name)
-        self.classes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        
-        # self.train_error()
-        # self.test_error()
 
-        # self.pretty_print_accuracy()
+        # part ii
+        self.train_error()
+        self.test_error()
+        self.pretty_print_accuracy()
 
+        # part iii
         self.plot_roc()
 
 if __name__ == "__main__":
