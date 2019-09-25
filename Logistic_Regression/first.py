@@ -60,6 +60,7 @@ class main:
         
         mapping = {">50K": 0, "<=50K": 1}
         self.data = self.data.replace({'moreless': mapping})
+        # self.data = self.data.sample(frac=1).reset_index(drop=True)
         
         # normalizing data
         # self.data = (self.data - self.data.mean())/self.data.std()
@@ -97,6 +98,7 @@ class main:
         
         mapping = {">50K.": 0, "<=50K.": 1}
         self.test_set = self.test_set.replace({'moreless': mapping})
+        # self.test_set = self.test_set.sample(frac=1).reset_index(drop=True)
 
     def sigmoid(self, z):
         return (1/(1 + np.exp(-z)))

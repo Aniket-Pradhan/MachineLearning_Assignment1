@@ -11,6 +11,7 @@ class second:
         filename = "/best_fit_line_data.csv"
         with open(self.path.Linear_Regression + filename, 'r') as file:
             self.data = pd.read_csv(file)
+        # self.data = self.data.sample(frac=1).reset_index(drop=True)
         s = self.data.iloc[:,0]
         self.X = s.to_numpy()
         X = []

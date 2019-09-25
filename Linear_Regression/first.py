@@ -52,6 +52,7 @@ class main:
         self.features = self.columns[:len(self.columns)-1]
         mapping = {'M': 1, 'F': 2, 'I': 3}
         self.data = self.data.replace({'sex': mapping})
+        self.data = self.data.sample(frac=1).reset_index(drop=True)
         # self.plot_features()
         
         # normalizing data
